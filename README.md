@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Know Your Car — React + Vite
 
 Frontend for the Know Your Car app, built with Vite + React.
@@ -61,3 +62,7 @@ Make sure the Express backend is running on `http://localhost:8000`.
 | `/car/:name`  | Car detail page                   |
 
 More pages coming soon.
+=======
+# Know-Your-Car-React
+“Know Your Car” is a web application that helps users explore and understand different cars in one place. It allows users to browse cars, search by name, and filter by brand to view key details like price, specifications,and features. The platform also includes an admin side where new cars and brands can be added or managed,making the data dynamic.
+>>>>>>> a2b2e9242a3d79548a6b52bf06d75394cdac0da1
