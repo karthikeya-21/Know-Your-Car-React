@@ -1,0 +1,63 @@
+/* ── Fonts ── */
+/* Playfair Display — editorial display serif */
+/* Syne — geometric, characterful body font */
+
+/* ── Variables ── */
+:root {
+  --bg:         #f5f3ef;
+  --bg2:        #edeae4;
+  --surface:    #ffffff;
+  --border:     #e0dbd3;
+  --ink:        #0f0f0f;
+  --ink-2:      #3a3a3a;
+  --muted:      #8a8278;
+  --accent:     #c0392b;
+  --accent-2:   #e74c3c;
+  --accent-bg:  #fdf0ee;
+  --card-r:     4px;
+  --font-disp:  'Playfair Display', Georgia, serif;
+  --font-body:  'Syne', sans-serif;
+  --shadow-sm:  0 2px 8px rgba(15,15,15,0.06);
+  --shadow-md:  0 8px 32px rgba(15,15,15,0.10);
+  --shadow-lg:  0 24px 64px rgba(15,15,15,0.14);
+  --transition: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ── Reset ── */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+img {
+  display: block;
+  max-width: 100%;
+}
+
+button {
+  cursor: pointer;
+  border: none;
+  background: none;
+  font-family: var(--font-body);
+}
+
+input, select, textarea {
+  font-family: var(--font-body);
+}
