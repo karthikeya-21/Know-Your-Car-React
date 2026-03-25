@@ -1,6 +1,9 @@
+import { useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useFetch } from '../hooks/useFetch';
 import { api } from '../utils/api';
+import { useAuth } from '../context/AuthContext';
+import { addToWishlist } from '../firebase/services';
 import './CarDetail.css';
 
 const SPEC_LABELS = {
@@ -37,13 +40,34 @@ export default function CarDetail() {
   const { name }    = useParams();
   const navigate    = useNavigate();
   const decodedName = decodeURIComponent(name);
+  const { user }    = useAuth();
+
+  const [wishlistState, setWishlistState] = useState('idle'); // idle | loading | added | exists
 
   const { data: car, loading, error } = useFetch(
     () => api.getCarByName(decodedName),
     [decodedName]
   );
 
-  /* ── Loading ── */
+  const handleWishlist = async () => {
+    if (!user) { navigate('/login'); return; }
+    setWishlistState('loading');
+    try {
+      const result = await addToWishlist(user.uid, car);
+      setWishlistState(result.alreadyExists ? 'exists' : 'added');
+    } catch (err) {
+      console.error(err);
+      setWishlistState('idle');
+    }
+  };
+
+  const wishlistLabel = {
+    idle:    '♡  Add to Wishlist',
+    loading: 'Adding…',
+    added:   '♥  Added to Wishlist',
+    exists:  '♥  Already in Wishlist',
+  }[wishlistState];
+
   if (loading) {
     return (
       <div className="cd-page">
@@ -56,75 +80,59 @@ export default function CarDetail() {
     );
   }
 
-  /* ── Error ── */
   if (error || !car) {
     return (
       <div className="cd-page cd-page--centered">
         <div className="cd-not-found">
           <span className="cd-not-found__code">404</span>
           <h2 className="cd-not-found__title">Car not found</h2>
-          <p className="cd-not-found__sub">
-            We couldn't find <strong>{decodedName}</strong> in our database.
-          </p>
+          <p className="cd-not-found__sub">We couldn't find <strong>{decodedName}</strong> in our database.</p>
           <Link to="/" className="cd-btn cd-btn--primary">← Back to Explore</Link>
         </div>
       </div>
     );
   }
 
-  const specs = car.specifications ||car.specificatios|| {};
+  const specs = car.specifications || car.specificatios || {};
 
   return (
     <div className="cd-page">
 
-      {/* ── Breadcrumb ── */}
       <nav className="cd-breadcrumb" aria-label="Breadcrumb">
         <Link to="/" className="cd-breadcrumb__link">Explore</Link>
         <span className="cd-breadcrumb__sep" aria-hidden="true">›</span>
         <span className="cd-breadcrumb__current">{car.name}</span>
       </nav>
 
-      {/* ── Main layout ── */}
       <div className="cd-layout">
 
-        {/* ── Left — Image ── */}
+        {/* ── Image ── */}
         <div className="cd-image-col">
           <div className="cd-image-wrap">
-            <img
-              src={car.image || car.Image || '/placeholder.png'}
-              alt={car.name}
-              className="cd-image"
-            />
+            <img src={car.image || car.Image || '/placeholder.png'} alt={car.name} className="cd-image" />
             <div className="cd-image-badges">
               <span className="cd-badge cd-badge--brand">{car.brand}</span>
               <span className="cd-badge cd-badge--year">{car.year}</span>
             </div>
           </div>
-
-          {/* Price block */}
           <div className="cd-price-block">
             <span className="cd-price-block__label">Starting price</span>
             <span className="cd-price-block__price">
               ₹{Number(car.price.replace(/,/g, '')).toLocaleString('en-IN')}
-              
             </span>
           </div>
         </div>
 
-        {/* ── Right — Info ── */}
+        {/* ── Info ── */}
         <div className="cd-info-col">
-
-          {/* Header */}
           <div className="cd-header">
             <p className="cd-header__brand">{car.brand}</p>
             <h1 className="cd-header__name">{car.name}</h1>
             <StarRating rating={car.rating} />
           </div>
 
-          {/* Divider */}
-          <div className="cd-divider" aria-hidden="true" />
+          <div className="cd-divider" />
 
-          {/* Specs */}
           <div className="cd-specs">
             <h2 className="cd-specs__title">Specifications</h2>
             <div className="cd-specs__grid">
@@ -136,22 +144,25 @@ export default function CarDetail() {
             </div>
           </div>
 
-          {/* Divider */}
-          <div className="cd-divider" aria-hidden="true" />
+          <div className="cd-divider" />
 
-          {/* Actions */}
           <div className="cd-actions">
+            {/* Wishlist button — mirrors Flutter's "Add to Favorites" button */}
             <button
-              className="cd-btn cd-btn--secondary"
-              onClick={() => navigate(-1)}
+              className={`cd-wishlist-btn ${wishlistState === 'added' || wishlistState === 'exists' ? 'cd-wishlist-btn--added' : ''}`}
+              onClick={handleWishlist}
+              disabled={wishlistState === 'loading' || wishlistState === 'added' || wishlistState === 'exists'}
             >
+              {wishlistLabel}
+            </button>
+
+            <button className="cd-btn cd-btn--secondary" onClick={() => navigate(-1)}>
               ← Go Back
             </button>
           </div>
-
         </div>
-      </div>
 
+      </div>
     </div>
   );
 }
