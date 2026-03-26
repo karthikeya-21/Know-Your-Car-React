@@ -160,7 +160,5 @@ export async function getWishlist(uid) {
  * Remove a car from the wishlist by its Firestore document ID.
  */
 export async function removeFromWishlist(uid, firestoreId) {
-  const { deleteDoc: del, doc } = await import('firebase/firestore');
-  const { firestore: fs }       = await import('./config');
-  return deleteDoc(doc(fs, uid, firestoreId));
+  return deleteDoc(doc(firestore, uid, firestoreId));
 }
