@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useFetch } from '../hooks/useFetch';
 import { api } from '../utils/api';
@@ -40,33 +40,32 @@ export default function CarDetail() {
   const { name }    = useParams();
   const navigate    = useNavigate();
   const decodedName = decodeURIComponent(name);
-  const { user }    = useAuth();
-
-  const [wishlistState, setWishlistState] = useState('idle'); // idle | loading | added | exists
+  const { user, wishlist, addToWishlistCache } = useAuth();
 
   const { data: car, loading, error } = useFetch(
     () => api.getCarByName(decodedName),
     [decodedName]
   );
 
+  // Check if already in wishlist from cache — no extra fetch needed
+  const isInWishlist = useMemo(() => {
+    if (!wishlist || !car) return false;
+    return wishlist.some((w) => w.name === car.name);
+  }, [wishlist, car]);
+
   const handleWishlist = async () => {
     if (!user) { navigate('/login'); return; }
-    setWishlistState('loading');
+    if (isInWishlist) { navigate('/profile'); return; }
     try {
       const result = await addToWishlist(user.uid, car);
-      setWishlistState(result.alreadyExists ? 'exists' : 'added');
+      if (!result.alreadyExists) {
+        // Update cache immediately — no refetch
+        addToWishlistCache({ ...car, firestoreId: Date.now().toString(), Image: car.image });
+      }
     } catch (err) {
       console.error(err);
-      setWishlistState('idle');
     }
   };
-
-  const wishlistLabel = {
-    idle:    '♡  Add to Wishlist',
-    loading: 'Adding…',
-    added:   '♥  Added to Wishlist',
-    exists:  '♥  Already in Wishlist',
-  }[wishlistState];
 
   if (loading) {
     return (
@@ -106,7 +105,6 @@ export default function CarDetail() {
 
       <div className="cd-layout">
 
-        {/* ── Image ── */}
         <div className="cd-image-col">
           <div className="cd-image-wrap">
             <img src={car.image || car.Image || '/placeholder.png'} alt={car.name} className="cd-image" />
@@ -117,13 +115,10 @@ export default function CarDetail() {
           </div>
           <div className="cd-price-block">
             <span className="cd-price-block__label">Starting price</span>
-            <span className="cd-price-block__price">
-              ₹{Number(car.price.replace(/,/g, '')).toLocaleString('en-IN')}
-            </span>
+            <span className="cd-price-block__price">₹{Number(car.price.replace(/,/g, '')).toLocaleString('en-IN')}</span>
           </div>
         </div>
 
-        {/* ── Info ── */}
         <div className="cd-info-col">
           <div className="cd-header">
             <p className="cd-header__brand">{car.brand}</p>
@@ -137,9 +132,7 @@ export default function CarDetail() {
             <h2 className="cd-specs__title">Specifications</h2>
             <div className="cd-specs__grid">
               {Object.entries(SPEC_LABELS).map(([key, label], i) =>
-                specs[key] ? (
-                  <SpecRow key={key} label={label} value={specs[key]} index={i} />
-                ) : null
+                specs[key] ? <SpecRow key={key} label={label} value={specs[key]} index={i} /> : null
               )}
             </div>
           </div>
@@ -147,15 +140,12 @@ export default function CarDetail() {
           <div className="cd-divider" />
 
           <div className="cd-actions">
-            {/* Wishlist button — mirrors Flutter's "Add to Favorites" button */}
             <button
-              className={`cd-wishlist-btn ${wishlistState === 'added' || wishlistState === 'exists' ? 'cd-wishlist-btn--added' : ''}`}
+              className={`cd-wishlist-btn ${isInWishlist ? 'cd-wishlist-btn--added' : ''}`}
               onClick={handleWishlist}
-              disabled={wishlistState === 'loading' || wishlistState === 'added' || wishlistState === 'exists'}
             >
-              {wishlistLabel}
+              {isInWishlist ? '♥  Go to Wishlist' : '♡  Add to Wishlist'}
             </button>
-
             <button className="cd-btn cd-btn--secondary" onClick={() => navigate(-1)}>
               ← Go Back
             </button>

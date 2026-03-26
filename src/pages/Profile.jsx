@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { getWishlist, removeFromWishlist } from '../firebase/services';
+import { removeFromWishlist } from '../firebase/services';
 import './Profile.css';
 
 function WishlistCard({ car, uid, onRemove }) {
@@ -18,28 +18,24 @@ function WishlistCard({ car, uid, onRemove }) {
     }
   };
 
-  // Support both Flutter field names (Image / specificatios) and new ones
   const imageUrl = car.Image || car.image || '/placeholder.png';
-  const carName  = car.name;
-  const carBrand = car.brand;
-  const carPrice = car.price;
 
   return (
     <div className="fav-card">
-      <Link to={`/car/${encodeURIComponent(carName)}`} className="fav-card__image-wrap">
-        <img src={imageUrl} alt={carName} className="fav-card__image" />
+      <Link to={`/car/${encodeURIComponent(car.name)}`} className="fav-card__image-wrap">
+        <img src={imageUrl} alt={car.name} className="fav-card__image" />
       </Link>
       <div className="fav-card__body">
         <div>
-          <p className="fav-card__brand">{carBrand}</p>
-          <h3 className="fav-card__name">{carName}</h3>
-          <p className="fav-card__price">₹{Number(carPrice).toLocaleString('en-IN')}</p>
+          <p className="fav-card__brand">{car.brand}</p>
+          <h3 className="fav-card__name">{car.name}</h3>
+          <p className="fav-card__price">₹{Number(car.price).toLocaleString('en-IN')}</p>
         </div>
         <button
           className="fav-card__remove"
           onClick={handleRemove}
           disabled={removing}
-          aria-label={`Remove ${carName} from wishlist`}
+          aria-label={`Remove ${car.name} from wishlist`}
         >
           {removing ? '…' : '✕'}
         </button>
@@ -49,21 +45,11 @@ function WishlistCard({ car, uid, onRemove }) {
 }
 
 export default function Profile() {
-  const { user, profile, logout }          = useAuth();
-  const navigate                           = useNavigate();
-  const [wishlist,    setWishlist]         = useState([]);
-  const [wishLoading, setWishLoading]      = useState(true);
-
-  useEffect(() => {
-    if (!user) return;
-    getWishlist(user.uid)
-      .then(setWishlist)
-      .catch(console.error)
-      .finally(() => setWishLoading(false));
-  }, [user]);
+  const { user, profile, wishlist, logout, removeFromWishlistCache } = useAuth();
+  const navigate = useNavigate();
 
   const handleRemove = (firestoreId) => {
-    setWishlist((prev) => prev.filter((c) => c.firestoreId !== firestoreId));
+    removeFromWishlistCache(firestoreId);
   };
 
   const handleLogout = async () => {
@@ -71,16 +57,17 @@ export default function Profile() {
     navigate('/');
   };
 
-  // Profile data from Realtime Database
   const profileData = profile?.data || {};
   const displayName = profileData.name  || '';
   const bio         = profileData.bio   || '';
   const photoUrl    = profileData.image || '';
 
+  // wishlist is null while loading (first time), array once loaded
+  const wishlistLoading = wishlist === null;
+
   return (
     <div className="profile-page">
 
-      {/* ── Hero ── */}
       <section className="profile-hero">
         <div className="profile-hero__inner">
           <div className="profile-hero__avatar">
@@ -90,34 +77,29 @@ export default function Profile() {
             }
           </div>
           <div className="profile-hero__info">
-            <h1 className="profile-hero__name">
-              {displayName || user?.email}
-            </h1>
+            <h1 className="profile-hero__name">{displayName || user?.email}</h1>
             {bio && <p className="profile-hero__bio">{bio}</p>}
             <p className="profile-hero__email">{user?.email}</p>
             <div className="profile-hero__actions">
-              <Link to="/profile/edit" className="profile-btn profile-btn--primary">
-                Edit Profile
-              </Link>
-              <button className="profile-btn profile-btn--ghost" onClick={handleLogout}>
-                Logout
-              </button>
+              <Link to="/profile/edit" className="profile-btn profile-btn--primary">Edit Profile</Link>
+              <button className="profile-btn profile-btn--ghost" onClick={handleLogout}>Logout</button>
             </div>
           </div>
         </div>
       </section>
 
-      {/* ── Wishlist ── */}
       <section className="profile-section">
         <div className="profile-section__inner">
           <div className="profile-section__header">
             <h2 className="profile-section__title">Wishlist</h2>
-            <span className="profile-section__count">
-              {wishlist.length} {wishlist.length === 1 ? 'car' : 'cars'}
-            </span>
+            {!wishlistLoading && (
+              <span className="profile-section__count">
+                {wishlist.length} {wishlist.length === 1 ? 'car' : 'cars'}
+              </span>
+            )}
           </div>
 
-          {wishLoading && (
+          {wishlistLoading && (
             <div className="fav-grid">
               {[1, 2, 3].map((i) => (
                 <div key={i} className="fav-skeleton">
@@ -131,7 +113,7 @@ export default function Profile() {
             </div>
           )}
 
-          {!wishLoading && wishlist.length === 0 && (
+          {!wishlistLoading && wishlist.length === 0 && (
             <div className="fav-empty">
               <span className="fav-empty__icon">🚗</span>
               <p>No cars in your wishlist yet.</p>
@@ -139,15 +121,10 @@ export default function Profile() {
             </div>
           )}
 
-          {!wishLoading && wishlist.length > 0 && (
+          {!wishlistLoading && wishlist.length > 0 && (
             <div className="fav-grid">
               {wishlist.map((car) => (
-                <WishlistCard
-                  key={car.firestoreId}
-                  car={car}
-                  uid={user.uid}
-                  onRemove={handleRemove}
-                />
+                <WishlistCard key={car.firestoreId} car={car} uid={user.uid} onRemove={handleRemove} />
               ))}
             </div>
           )}

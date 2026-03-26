@@ -1,6 +1,5 @@
-import { useState, useMemo } from 'react';
-import { useFetch } from '../hooks/useFetch';
-import { api } from '../utils/api';
+import { useState, useMemo, useEffect } from 'react';
+import { useData } from '../context/DataContext';
 import CarCard from '../components/CarCard';
 import './Home.css';
 
@@ -19,9 +18,7 @@ function BrandFilter({ brands, active, onChange }) {
           className={`brand-filter__pill ${active === b.brand ? 'active' : ''}`}
           onClick={() => onChange(b.brand)}
         >
-          {b.logo && (
-            <img src={b.logo} alt="" className="brand-filter__logo" aria-hidden="true" />
-          )}
+          {b.logo && <img src={b.logo} alt="" className="brand-filter__logo" aria-hidden="true" />}
           {b.brand}
         </button>
       ))}
@@ -70,11 +67,19 @@ function LoadingSkeleton() {
 }
 
 export default function Home() {
-  const [search, setSearch]       = useState('');
+  const [search,      setSearch]  = useState('');
   const [activeBrand, setBrand]   = useState('All');
 
-  const { data: cars,   loading: carsLoading,   error: carsError   } = useFetch(api.getCars,    []);
-  const { data: brands, loading: brandsLoading                      } = useFetch(api.getBrands, []);
+  const {
+    cars,   carsLoading,   carsError,   fetchCars,
+    brands, brandsLoading,              fetchBrands,
+  } = useData();
+
+  // Trigger fetch on mount — skipped automatically if already cached
+  useEffect(() => {
+    fetchCars();
+    fetchBrands();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const filtered = useMemo(() => {
     if (!cars) return [];
@@ -94,38 +99,23 @@ export default function Home() {
           <div className="hero__text">
             <p className="hero__eyebrow">The Car Encyclopedia</p>
             <h1 className="hero__title">
-              Know every<br />
-              <em>detail.</em>
+              Know every<br /><em>detail.</em>
             </h1>
             <p className="hero__sub">
               Specs, ratings and everything in between — for every car that matters.
             </p>
           </div>
-
           <div className="hero__stat-row">
-            {cars && (
-              <div className="hero__stat">
-                <span className="hero__stat-num">{cars.length}</span>
-                <span className="hero__stat-label">Cars listed</span>
-              </div>
-            )}
-            {brands && (
-              <div className="hero__stat">
-                <span className="hero__stat-num">{brands.length}</span>
-                <span className="hero__stat-label">Brands</span>
-              </div>
-            )}
+            {cars   && <div className="hero__stat"><span className="hero__stat-num">{cars.length}</span><span className="hero__stat-label">Cars listed</span></div>}
+            {brands && <div className="hero__stat"><span className="hero__stat-num">{brands.length}</span><span className="hero__stat-label">Brands</span></div>}
           </div>
         </div>
-
-        {/* Decorative rule */}
         <div className="hero__rule" aria-hidden="true" />
       </section>
 
       {/* ── Controls ── */}
       <section className="controls">
         <div className="controls__inner">
-          {/* Search */}
           <div className="search-wrap">
             <svg className="search-wrap__icon" viewBox="0 0 20 20" fill="none">
               <circle cx="8.5" cy="8.5" r="5.5" stroke="currentColor" strokeWidth="1.5"/>
@@ -140,21 +130,12 @@ export default function Home() {
               aria-label="Search cars"
             />
             {search && (
-              <button
-                className="search-wrap__clear"
-                onClick={() => setSearch('')}
-                aria-label="Clear search"
-              >✕</button>
+              <button className="search-wrap__clear" onClick={() => setSearch('')} aria-label="Clear search">✕</button>
             )}
           </div>
 
-          {/* Brand filter */}
           {!brandsLoading && brands && (
-            <BrandFilter
-              brands={brands}
-              active={activeBrand}
-              onChange={setBrand}
-            />
+            <BrandFilter brands={brands} active={activeBrand} onChange={setBrand} />
           )}
         </div>
       </section>
@@ -163,7 +144,6 @@ export default function Home() {
       <main className="results">
         <div className="results__inner">
 
-          {/* Error */}
           {carsError && (
             <div className="error-banner">
               <strong>Could not connect to the server.</strong>
@@ -171,10 +151,8 @@ export default function Home() {
             </div>
           )}
 
-          {/* Loading */}
           {carsLoading && <LoadingSkeleton />}
 
-          {/* Results */}
           {!carsLoading && !carsError && (
             <>
               <div className="results__meta">
@@ -184,23 +162,20 @@ export default function Home() {
                   {search && ` · "${search}"`}
                 </span>
               </div>
-
-              {filtered.length === 0 ? (
-                <EmptyState search={search} brand={activeBrand} />
-              ) : (
-                <div className="car-grid">
-                  {filtered.map((car, i) => (
-                    <CarCard key={car._id} car={car} index={i} />
-                  ))}
-                </div>
-              )}
+              {filtered.length === 0
+                ? <EmptyState search={search} brand={activeBrand} />
+                : (
+                  <div className="car-grid">
+                    {filtered.map((car, i) => <CarCard key={car._id} car={car} index={i} />)}
+                  </div>
+                )
+              }
             </>
           )}
 
         </div>
       </main>
 
-      {/* ── Footer ── */}
       <footer className="site-footer">
         <div className="site-footer__inner">
           <span className="site-footer__logo">KnowYourCar</span>
