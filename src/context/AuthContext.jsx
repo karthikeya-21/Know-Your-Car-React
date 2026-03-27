@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, useRef } from 'react';
-import { onAuthStateChanged } from 'firebase/auth';
+import { onAuthStateChanged, setPersistence, browserSessionPersistence } from 'firebase/auth';
 import { auth } from '../firebase/config';
 import {
   loginUser,
@@ -58,6 +58,8 @@ export function AuthProvider({ children }) {
   }, []);
 
   const login = async (email, password) => {
+    //to log out after browser close
+    await setPersistence(auth, browserSessionPersistence);
     const cred = await loginUser(email, password);
     setUser(cred.user);
     fetchedRef.current = true;
@@ -66,6 +68,7 @@ export function AuthProvider({ children }) {
   };
 
   const register = async (email, password) => {
+    await setPersistence(auth, browserSessionPersistence);
     const cred  = await registerUser(email, password);
     const dbKey = await createUserProfile(cred.user.uid, email);
     const prof  = { dbKey, data: { uid: cred.user.uid, email, name: '', bio: '', phone: '', image: '' } };

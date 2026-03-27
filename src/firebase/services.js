@@ -22,6 +22,7 @@ import {
   getDocs,
   query as fsQuery,
   where,
+  doc,
 } from 'firebase/firestore';
 
 import {
@@ -59,14 +60,15 @@ export async function resetPassword(email) {
  */
 export async function getUserProfile(uid) {
   const usersRef = dbRef(db, 'users');
-  const snapshot = await get(usersRef);
+  const userQuery = query(usersRef, orderByChild('uid'), equalTo(uid));
+  const snapshot = await get(userQuery);
+  
   if (!snapshot.exists()) return null;
 
   let result = null;
+  // Even though it's one result, Firebase returns it as a list of matches
   snapshot.forEach((child) => {
-    if (child.val().uid === uid) {
-      result = { dbKey: child.key, data: child.val() };
-    }
+    result = { dbKey: child.key, data: child.val() };
   });
   return result;
 }
